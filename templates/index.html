@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Empathy Engine</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2rem auto;
+      max-width: 900px;
+      line-height: 1.5;
+      color: #1f2937;
+      padding: 0 1rem;
+    }
+    .card {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      background: #f9fafb;
+    }
+    textarea {
+      width: 100%;
+      min-height: 140px;
+      resize: vertical;
+      padding: 0.75rem;
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 0.75rem;
+      background: #2563eb;
+      color: #fff;
+      border: 0;
+      border-radius: 6px;
+      padding: 0.6rem 1rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    .error {
+      color: #b91c1c;
+      font-weight: 600;
+    }
+    .meta span {
+      display: inline-block;
+      margin-right: 1rem;
+      margin-bottom: 0.35rem;
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>The Empathy Engine</h1>
+  <p>Enter text, detect emotion, and generate expressive speech.</p>
+
+  <div class="card">
+    <form method="post" action="/synthesize">
+      <label for="text"><strong>Input Text</strong></label>
+      <textarea id="text" name="text" placeholder="Type customer-facing text here...">{{ text }}</textarea>
+      <button type="submit">Synthesize Audio</button>
+    </form>
+  </div>
+
+  {% if error %}
+    <div class="card error">{{ error }}</div>
+  {% endif %}
+
+  {% if audio_url %}
+    <div class="card">
+      <h2>Result</h2>
+      <div class="meta">
+        <span><strong>Emotion:</strong> {{ emotion }}</span>
+        <span><strong>Intensity:</strong> {{ intensity }}</span>
+        <span><strong>Compound:</strong> {{ compound_score }}</span>
+        <span><strong>Rate:</strong> {{ rate }}</span>
+        <span><strong>Volume:</strong> {{ volume }}</span>
+      </div>
+      <audio controls src="{{ audio_url }}"></audio>
+      <p><a href="{{ audio_url }}" download>Download audio file</a></p>
+    </div>
+  {% endif %}
+</body>
+</html>

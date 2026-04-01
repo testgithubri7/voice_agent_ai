@@ -12,6 +12,7 @@
       line-height: 1.5;
       color: #1f2937;
       padding: 0 1rem;
+      transition: background 0.3s ease;
     }
     .card {
       border: 1px solid #e5e7eb;
@@ -29,6 +30,17 @@
       border: 1px solid #d1d5db;
       font-size: 1rem;
       box-sizing: border-box;
+    }
+    select {
+      margin-top: 0.5rem;
+      margin-bottom: 0.5rem;
+      min-width: 220px;
+      padding: 0.5rem;
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      font-size: 0.95rem;
+      background: #ffffff;
+      color: #111827;
     }
     button {
       margin-top: 0.75rem;
@@ -53,6 +65,76 @@
       margin-bottom: 0.35rem;
       font-size: 0.95rem;
     }
+    .intensity-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-right: 1rem;
+      margin-bottom: 0.35rem;
+      vertical-align: middle;
+    }
+    .intensity-track {
+      width: 160px;
+      height: 10px;
+      border-radius: 999px;
+      background: #d1d5db;
+      overflow: hidden;
+      display: inline-block;
+    }
+    .intensity-fill {
+      height: 10px;
+      background: #2563eb;
+    }
+    .emotion-chip {
+      display: inline-block;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      color: #fff;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+    }
+    .audio-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    .toolbar {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .demo-buttons button {
+      background: #0ea5e9;
+      margin-top: 0.3rem;
+      margin-right: 0.4rem;
+    }
+    .debug-box {
+      margin-top: 0.75rem;
+      padding: 0.75rem;
+      border-radius: 8px;
+      background: #eef2ff;
+      border: 1px solid #c7d2fe;
+      font-size: 0.95rem;
+    }
+    .loader {
+      display: none;
+      margin-top: 0.75rem;
+      width: 24px;
+      height: 24px;
+      border: 3px solid #bfdbfe;
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    @media (max-width: 720px) {
+      .audio-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
@@ -60,10 +142,37 @@
   <p>Enter text, detect emotion, and generate expressive speech.</p>
 
   <div class="card">
-    <form method="post" action="/synthesize">
+    <form method="post" action="/synthesize" id="synth-form">
       <label for="text"><strong>Input Text</strong></label>
       <textarea id="text" name="text" placeholder="Type customer-facing text here...">{{ text }}</textarea>
+      <div class="toolbar">
+        <div>
+        <label for="mode"><strong>Use Case Mode</strong></label><br>
+        <select id="mode" name="mode">
+          <option value="support" {% if mode == "support" %}selected{% endif %}>Support</option>
+          <option value="sales" {% if mode == "sales" %}selected{% endif %}>Sales</option>
+          <option value="therapy" {% if mode == "therapy" %}selected{% endif %}>Therapy</option>
+        </select>
+        </div>
+        <div>
+          <label for="personality"><strong>Voice Personality</strong></label><br>
+          <select id="personality" name="personality">
+            <option value="default" {% if personality == "default" %}selected{% endif %}>Default</option>
+            <option value="female" {% if personality == "female" %}selected{% endif %}>Female</option>
+            <option value="male" {% if personality == "male" %}selected{% endif %}>Male</option>
+          </select>
+        </div>
+        <div>
+          <label for="debug"><strong>Debug Mode</strong></label><br>
+          <input id="debug" type="checkbox" name="debug" value="1" {% if debug %}checked{% endif %}>
+        </div>
+      </div>
       <button type="submit">Synthesize Audio</button>
+      <div class="loader" id="loader"></div>
+      <div class="demo-buttons">
+        <button type="button" onclick="fillDemo(`I've been waiting for hours! This is unacceptable!`)">Angry customer demo</button>
+        <button type="button" onclick="fillDemo(`This is the best service ever! I'm really happy today!`)">Happy user demo</button>
+      </div>
     </form>
   </div>
 
@@ -74,16 +183,66 @@
   {% if audio_url %}
     <div class="card">
       <h2>Result</h2>
+      {% if emotion %}
+        <div class="emotion-chip" style="background: {{ emotion_color or '#6b7280' }};">
+          {{ emoji or '😐' }} {{ emotion|title }}
+        </div>
+      {% endif %}
       <div class="meta">
-        <span><strong>Emotion:</strong> {{ emotion }}</span>
-        <span><strong>Intensity:</strong> {{ intensity }}</span>
-        <span><strong>Compound:</strong> {{ compound_score }}</span>
-        <span><strong>Rate:</strong> {{ rate }}</span>
-        <span><strong>Volume:</strong> {{ volume }}</span>
+        <span><strong>Intensity:</strong> {{ intensity or '0.00' }}</span>
+        <span class="intensity-wrap">
+          <strong>Bar:</strong>
+          <span class="intensity-track">
+            <span class="intensity-fill" style="width: {{ intensity_pct or 0 }}%;"></span>
+          </span>
+          <span>{{ intensity_pct or 0 }}%</span>
+        </span>
+        <span><strong>Compound:</strong> {{ compound_score or '0.000' }}</span>
+        <span><strong>Rate:</strong> {{ rate or 170 }}</span>
+        <span><strong>Pitch:</strong> {{ pitch or 50 }}</span>
+        <span><strong>Volume:</strong> {{ volume or '0.90' }}</span>
       </div>
-      <audio controls src="{{ audio_url }}"></audio>
-      <p><a href="{{ audio_url }}" download>Download audio file</a></p>
+      <p title="{{ explain_tip }}"><strong>Why this emotion?</strong> {{ explain_tip }}</p>
+      {% if from_cache %}
+        <p><em>Served from cache for faster response.</em></p>
+      {% endif %}
+      <div class="audio-grid">
+        <div>
+          <h3>Emotional TTS</h3>
+          <audio controls src="{{ audio_url }}"></audio>
+          <p><a href="{{ audio_url }}" download>Download emotional audio</a></p>
+        </div>
+        <div>
+          <h3>Normal TTS</h3>
+          <audio controls src="{{ audio_url_normal }}"></audio>
+          <p><a href="{{ audio_url_normal }}" download>Download normal audio</a></p>
+        </div>
+      </div>
+      {% if debug %}
+        <div class="debug-box">
+          <strong>Debug Reasoning</strong><br>
+          Sentences: {{ debug_sentences }}<br>
+          Signals:
+          {% for r in debug_reasons %}
+            <span>{{ r }}{% if not loop.last %}, {% endif %}</span>
+          {% endfor %}
+        </div>
+      {% endif %}
     </div>
   {% endif %}
+  <script>
+    function fillDemo(text) {
+      document.getElementById("text").value = text;
+    }
+    const form = document.getElementById("synth-form");
+    const loader = document.getElementById("loader");
+    form.addEventListener("submit", function() {
+      loader.style.display = "block";
+    });
+    const emotionColor = "{{ emotion_color or '#ffffff' }}";
+    if (emotionColor && emotionColor !== "#6b7280") {
+      document.body.style.background = emotionColor + "14";
+    }
+  </script>
 </body>
 </html>

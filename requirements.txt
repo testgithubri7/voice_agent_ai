@@ -1,5 +1,7 @@
 vaderSentiment
 pyttsx3
+edge-tts
+pydub
 fastapi
 uvicorn
 jinja2
